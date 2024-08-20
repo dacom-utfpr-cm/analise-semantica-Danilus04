@@ -5,6 +5,11 @@ from sys import argv, exit
 
 import logging
 
+# global 
+showKey = False 
+haveTPP = False
+arrError = []
+
 logging.basicConfig(
      level = logging.DEBUG,
      filename = "parser.log",
@@ -26,8 +31,22 @@ from anytree import RenderTree, AsciiStyle
 from myerror import MyError
 
 error_handler = MyError('ParserErrors')
+le = MyError('LexerErrors')
 
 root = None
+
+def find_column(input_text, token, flag=False):
+    if (flag):
+        last_cr = input_text.rfind('\n', 0, token.lexpos)
+        if last_cr < 0:
+            last_cr = -1
+        column = (token.lexpos - last_cr)
+    else:
+        last_cr = input_text.rfind('\n', 0, token.lexpos(2))
+        if last_cr < 0:
+            last_cr = -1
+        column = (token.lexpos(2) - last_cr)
+    return column
 
 # Sub-árvore.
 #       (programa)
@@ -111,8 +130,7 @@ def p_declaracao_variaveis(p):
 def p_inicializacao_variaveis(p):
     """inicializacao_variaveis : atribuicao"""
 
-    pai = MyNode(name='inicializacao_variaveis',
-                 type='INICIALIZACAO_VARIAVEIS')
+    pai = MyNode(name='inicializacao_variaveis', type='INICIALIZACAO_VARIAVEIS')
     p[0] = pai
     p[1].parent = pai
 
@@ -179,18 +197,22 @@ def p_indice(p):
 def p_indice_error(p):
     """indice : ABRE_COLCHETE error FECHA_COLCHETE
                 | indice ABRE_COLCHETE error FECHA_COLCHETE
+                | ABRE_COLCHETE expressao error
+                | error expressao FECHA_COLCHETE
+                | indice ABRE_COLCHETE expressao error
+                | indice error expressao FECHA_COLCHETE
     """
 
-    print("Erro na definicao do indice. Expressao ou indice.")
+    global arrError
+    global showKey
 
-    print("Erro:p[0]:{p0}, p[1]:{p1}, p[2]:{p2}, p[3]:{p3}".format(
-        p0=p[0], p1=p[1], p2=p[2], p3=p[3]))
-    error_line = p.lineno(2)
-    father = MyNode(name='ERROR::{}'.format(error_line), type='ERROR')
-    logging.error(
-        "Syntax error parsing index rule at line {}".format(error_line))
-    parser.errok()
-    p[0] = father
+    token = p
+    column = find_column(token.lexer.lexdata, token)
+
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+
+    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    p[0] = pai
     # if len(p) == 4:
     #     p[1] = new_node('ABRECOLCHETES', father)
     #     p[2].parent = father
@@ -267,7 +289,19 @@ def p_cabecalho_error(p):
     """cabecalho : ID ABRE_PARENTESE error FECHA_PARENTESE corpo FIM
                 | ID ABRE_PARENTESE lista_parametros FECHA_PARENTESE error FIM
                 | error ABRE_PARENTESE lista_parametros FECHA_PARENTESE corpo FIM 
+                | ID ABRE_PARENTESE lista_parametros error corpo FIM
+                | ID ABRE_PARENTESE lista_parametros FECHA_PARENTESE corpo 
     """
+    global arrError
+    global showKey
+
+    token = p
+    column = find_column(token.lexer.lexdata, token)
+
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+
+    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    p[0] = pai
 
 def p_lista_parametros(p):
     """lista_parametros : lista_parametros VIRGULA parametro
@@ -318,6 +352,17 @@ def p_parametro_error(p):
                 | parametro error FECHA_COLCHETE
                 | parametro ABRE_COLCHETE error
     """
+
+    global arrError
+    global showKey
+
+    token = p
+    column = find_column(token.lexer.lexdata, token)
+
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+
+    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    p[0] = pai
 
 
 def p_corpo(p):
@@ -400,7 +445,26 @@ def p_se_error(p):
         | SE expressao ENTAO corpo error corpo FIM
         | SE expressao ENTAO corpo SENAO corpo
     """
+    global arrError
+    global showKey
 
+    token = p
+    column = find_column(token.lexer.lexdata, token)
+
+    if p[1] != 'se':
+        arrError.append(error_handler.newError(showKey,'ERR-SYN-SE', linha=token.lineno(2), coluna=column))
+        pai = MyNode(name='ERR-SYN-SE', type='ERROR')
+        p[0] = pai
+    if len(p) == 8:
+        if p[3] != 'então':
+            arrError.append(error_handler.newError(showKey,'ERR-SYN-SE-ENTAO', linha=token.lineno(2), coluna=column))
+            pai = MyNode(name='ERR-SYN-SE-ENTAO', type='ERROR')
+            p[0] = pai
+        if p[7] != 'fim':
+            arrError.append(error_handler.newError(showKey,'ERR-SYN-SE-FIM', linha=token.lineno(2), coluna=column))
+            pai = MyNode(name='ERR-SYN-SE-FIM', type='ERROR')
+            p[0] = pai
+        
 
 def p_repita(p):
     """repita : REPITA corpo ATE expressao"""
@@ -424,7 +488,21 @@ def p_repita(p):
 def p_repita_error(p):
     """repita : error corpo ATE expressao
             | REPITA corpo error expressao
+            | REPITA corpo ATE error
+            | REPITA error ATE expressao
+
     """
+
+    global arrError
+    global showKey
+
+    token = p
+    column = find_column(token.lexer.lexdata, token)
+
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+
+    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    p[0] = pai
 
 def p_atribuicao(p):
     """atribuicao : var ATRIBUICAO expressao"""
@@ -464,8 +542,23 @@ def p_leia(p):
 
 def p_leia_error(p):
     """leia : LEIA ABRE_PARENTESE error FECHA_PARENTESE
+            | error ABRE_PARENTESE var FECHA_PARENTESE
+            | LEIA error var FECHA_PARENTESE
+            | LEIA ABRE_PARENTESE var error
+            | LEIA ABRE_PARENTESE error
+
     """
 
+    global arrError
+    global showKey
+
+    token = p
+    column = find_column(token.lexer.lexdata, token)
+
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+
+    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    p[0] = pai
 
 def p_escreva(p):
     """escreva : ESCREVA ABRE_PARENTESE expressao FECHA_PARENTESE"""
@@ -712,9 +805,21 @@ def p_fator(p):
 
 def p_fator_error(p):
     """fator : ABRE_PARENTESE error FECHA_PARENTESE
-        """
-ERR-SYN-FATOR
+            | error expressao FECHA_PARENTESE
+            | ABRE_PARENTESE expressao error
+    """
 
+    global arrError
+    global showKey
+
+    token = p
+    column = find_column(token.lexer.lexdata, token)
+
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+
+    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    p[0] = pai
+    
 def p_numero(p):
     """numero : NUM_INTEIRO
                 | NUM_PONTO_FLUTUANTE
@@ -768,26 +873,38 @@ def p_lista_argumentos(p):
                     | expressao
                     | vazio
         """
+        
     pai = MyNode(name='lista_argumentos', type='LISTA_ARGUMENTOS')
     p[0] = pai
 
     if len(p) > 2:
+        
         p[1].parent = pai
-
         filho2 = MyNode(name='VIRGULA', type='VIRGULA', parent=pai)
         filho_sym = MyNode(name=p[2], type='SIMBOLO', parent=filho2)
         p[2] = filho2
-
+            
         p[3].parent = pai
+        
     else:
         p[1].parent = pai
 
 def p_lista_argumentos_error(p):
-    """lista_argumentos : error VIRGULA expressao
-                    | expressao
-                    | vazio
+    """lista_argumentos : lista_argumentos error expressao 
+                    | lista_argumentos VIRGULA error
+                    | error VIRGULA expressao
         """
-    # error_handler.newError('ERR-SYN-LISTA-ARGUMENTOS')
+    global showKey
+    global arrError
+    
+    token = p
+    column = find_column(token.lexer.lexdata, token)
+
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+
+    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    p[0] = pai
+    
 
 
 def p_vazio(p):
@@ -797,12 +914,13 @@ def p_vazio(p):
     p[0] = pai
 
 
-def p_error(p):
 
+def p_error(p):
     if p:
         token = p
+        column = find_column(p.lexer.lexdata, token, flag=True)
         print("Erro:[{line},{column}]: Erro próximo ao token '{token}'".format(
-            line=token.lineno, column=token.lineno, token=token.value))
+            line=token.lineno, column=column, token=token.value))
 
 # Programa principal.
 
@@ -811,36 +929,59 @@ parser = yacc.yacc(method="LALR", optimize=True, start='programa', debug=True,
                    debuglog=log, write_tables=False, tabmodule='tpp_parser_tab')
 
 if __name__ == "__main__":
-    if(len(sys.argv) < 2):
-        raise TypeError(error_handler.newError('ERR-SYN-USE'))
+    
 
-    aux = argv[1].split('.')
-    if aux[-1] != 'tpp':
-      raise IOError(error_handler.newError('ERR-SYN-NOT-TPP'))
-    elif not os.path.exists(argv[1]):
-        raise IOError(error_handler.newError('ERR-SYN-FILE-NOT-EXISTS'))
-    else:
-        data = open(argv[1])
-        source_file = data.read()
-        parser.parse(source_file)
+    locationTTP = None
+  
+    for i in range(len(sys.argv)):
+        aux = argv[i].split('.')
+        if aux[-1] == 'tpp':
+            haveTPP = True
+            locationTTP = i 
+        if(argv[i] == '-k'):
+            showKey = True
 
-    if root and root.children != ():
-        print("Generating Syntax Tree Graph...")
-        # DotExporter(root).to_picture(argv[1] + ".ast.png")
-        UniqueDotExporter(root).to_picture(argv[1] + ".unique.ast.png")
-        DotExporter(root).to_dotfile(argv[1] + ".ast.dot")
-        UniqueDotExporter(root).to_dotfile(argv[1] + ".unique.ast.dot")
-        print(RenderTree(root, style=AsciiStyle()).by_attr())
-        print("Graph was generated.\nOutput file: " + argv[1] + ".ast.png")
+    try:
+        if(len(sys.argv) < 3 and showKey == True):
+            raise TypeError(error_handler.newError(showKey,'ERR-LEX-USE'))
 
-        # DotExporter(root, graph="graph",
-        #            nodenamefunc=MyNode.nodenamefunc,
-        #            nodeattrfunc=lambda node: 'label=%s' % (node.type),
-        #            edgeattrfunc=MyNode.edgeattrfunc,
-        #            edgetypefunc=MyNode.edgetypefunc).to_picture(argv[1] + ".ast2.png")
+        if haveTPP == False:
+            raise IOError(error_handler.newError(showKey,'ERR-LEX-NOT-TPP'))
+        elif not os.path.exists(argv[locationTTP]):
+            raise IOError(error_handler.newError(showKey,'ERR-LEX-FILE-NOT-EXISTS'))
+        else:
+            data = open(argv[locationTTP])
 
-        # DotExporter(root, nodenamefunc=lambda node: node.label).to_picture(argv[1] + ".ast3.png")
+            source_file = data.read()
+            parser.parse(source_file)
 
-    else:
-        print(error_handler.newError('WAR-SYN-NOT-GEN-SYN-TREE'))
-    print('\n\n')
+        if root and root.children != ():
+            print("Generating Syntax Tree Graph...")
+            # DotExporter(root).to_picture(argv[1] + ".ast.png")
+            UniqueDotExporter(root).to_picture(argv[1] + ".unique.ast.png")
+            DotExporter(root).to_dotfile(argv[1] + ".ast.dot")
+            UniqueDotExporter(root).to_dotfile(argv[1] + ".unique.ast.dot")
+            #print(RenderTree(root, style=AsciiStyle()).by_attr())
+            print("Graph was generated.\nOutput file: " + argv[1] + ".ast.png")
+
+            # DotExporter(root, graph="graph",
+            #            nodenamefunc=MyNode.nodenamefunc,
+            #            nodeattrfunc=lambda node: 'label=%s' % (node.type),
+            #            edgeattrfunc=MyNode.edgeattrfunc,
+            #            edgetypefunc=MyNode.edgetypefunc).to_picture(argv[1] + ".ast2.png")
+
+            # DotExporter(root, nodenamefunc=lambda node: node.label).to_picture(argv[1] + ".ast3.png")
+
+        else:
+            arrError.append(error_handler.newError(showKey,'WAR-SYN-NOT-GEN-SYN-TREE'))
+        print('\n\n')
+        if len(arrError) > 0:
+            raise IOError(arrError)
+    except Exception as e:
+        for i in range(len(e.args[0])):
+            print(e.args[0][i])
+    except (ValueError, TypeError):
+        print(e)
+
+
+    

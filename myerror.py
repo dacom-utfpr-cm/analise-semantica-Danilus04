@@ -10,20 +10,30 @@ class MyError():
     self.config.read('ErrorMessages.properties')
     self.errorType = et
 
-  def newError(self, key, **data):
+  def newError(self, showKey, key, linha=None, coluna=None, **data):
+    
     message = ''
-    if(key):
-      message = self.config.get(self.errorType, key)
-    if(data):
-      for key, value in data.items():
-        message = message + ", " f"{key}: {value}"
+    message = f"Erro[{linha}][{coluna}]: "
+    if(showKey):
+      if(linha == None or coluna == None):
+        return(key)
+      else: 
+        return(message + key)
+    else:  
+      if(key):
+        message += self.config.get(self.errorType, key)
+      
+      if(data):
+        for key, value in data.items():
+          message = message + ", " f"{key}: {value}"
 
-    return message
-    #print(message)
-    #frame = inspect.stack()[1][0]
+    
+      return(message)
+    
+      #frame = inspect.stack()[1][0]
 
-    #print(inspect.getframeinfo(frame).__getitem__(0))
-    #print(inspect.getframeinfo(frame).__getitem__(1))
+      #print(inspect.getframeinfo(frame).__getitem__(0))
+      #print(inspect.getframeinfo(frame).__getitem__(1))
 
 
 # le = MyError('LexerErrors')

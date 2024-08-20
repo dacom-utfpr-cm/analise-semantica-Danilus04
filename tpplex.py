@@ -12,9 +12,14 @@ logging.basicConfig(
     filemode="w",
     format="%(filename)10s:%(lineno)4d:%(message)s"
 )
+
+showKey = False
+haveTPP = False
+    
 log = logging.getLogger()
 
 le = MyError('LexerErrors')
+
 
 tokens = [
     "ID",  # identificador
@@ -170,8 +175,8 @@ def t_error(token):
 
     # file = token.lexer.filename
     line = token.lineno
-    # column = define_column(token.lexer.backup_data, token.lexpos)
-    message = le.newError('ERR-LEX-INV-CHAR', valor=token.value[0])
+    column = define_column(token.lexer.lexdata, token.lexpos)
+    message = le.newError(showKey,'ERR-LEX-INV-CHAR', line, column, valor=token.value[0])
     # print(f"[{file}]:[{line},{column}]: {message}.")
     print(message)
 
@@ -182,16 +187,30 @@ def t_error(token):
 
 def main():
 
-    if(len(sys.argv) < 2):
-        raise TypeError(le.newError('ERR-LEX-USE'))
+    global showKey 
+    global haveTPP    
 
-    aux = argv[1].split('.')
-    if aux[-1] != 'tpp':
-      raise IOError(le.newError('ERR-LEX-NOT-TPP'))
-    elif not os.path.exists(argv[1]):
-        raise IOError(le.newError('ERR-LEX-FILE-NOT-EXISTS'))
+    locationTTP = None
+  
+    for i in range(len(sys.argv)):
+        aux = argv[i].split('.')
+        if aux[-1] == 'tpp':
+            haveTPP = True
+            locationTTP = i 
+        if(argv[i] == '-k'):
+            showKey = True
+
+
+    
+    if(len(sys.argv) < 3 and showKey == True):
+        raise TypeError(le.newError(showKey,'ERR-LEX-USE'))
+
+    if haveTPP == False:
+      raise IOError(le.newError(showKey,'ERR-LEX-NOT-TPP'))
+    elif not os.path.exists(argv[locationTTP]):
+        raise IOError(le.newError(showKey,'ERR-LEX-FILE-NOT-EXISTS'))
     else:
-        data = open(argv[1])
+        data = open(argv[locationTTP])
 
         source_file = data.read()
         lexer.input(source_file)
@@ -200,6 +219,7 @@ def main():
         while True:
             tok = lexer.token()
             if not tok:
+                #raise IOError(le.newError(showKey,'ERR-LEX-INV-CHAR'))
                 break      # No more input
             #print(tok)
             print(tok.type)
