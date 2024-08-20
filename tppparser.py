@@ -928,6 +928,61 @@ def p_error(p):
 parser = yacc.yacc(method="LALR", optimize=True, start='programa', debug=True,
                    debuglog=log, write_tables=False, tabmodule='tpp_parser_tab')
 
+def generate_syntax_tree(args):
+    error_handler = MyError('SemaErrors')
+    root = None
+    arrError = []
+    showKey = False
+    haveTPP = False
+    locationTTP = None
+
+    # Parsing dos argumentos
+    for i in range(len(args)):
+        aux = args[i].split('.')
+        if aux[-1] == 'tpp':
+            haveTPP = True
+            locationTTP = i 
+        if args[i] == '-k':
+            showKey = True
+
+    try:
+        if len(args) < 3 and showKey:
+            raise TypeError(error_handler.newError(showKey, 'ERR-LEX-USE'))
+
+        if not haveTPP:
+            raise IOError(error_handler.newError(showKey, 'ERR-LEX-NOT-TPP'))
+        elif not os.path.exists(args[locationTTP]):
+            raise IOError(error_handler.newError(showKey, 'ERR-LEX-FILE-NOT-EXISTS'))
+        else:
+            with open(args[locationTTP], 'r') as data:
+                source_file = data.read()
+                parser.parse(source_file)
+
+        if root and root.children != ():
+            print("Generating Syntax Tree Graph...")
+            UniqueDotExporter(root).to_picture(args[locationTTP] + ".unique.ast.png")
+            DotExporter(root).to_dotfile(args[locationTTP] + ".ast.dot")
+            UniqueDotExporter(root).to_dotfile(args[locationTTP] + ".unique.ast.dot")
+            print("Graph was generated.\nOutput file: " + args[locationTTP] + ".ast.png")
+        else:
+            arrError.append(error_handler.newError(showKey, 'WAR-SYN-NOT-GEN-SYN-TREE'))
+
+        if len(arrError) > 0:
+            raise IOError(arrError)
+
+        return root
+
+    except Exception as e:
+        for i in range(len(e.args[0])):
+            print(e.args[0][i])
+        return None
+
+    except (ValueError, TypeError) as e:
+        print(e)
+        return None
+
+
+
 if __name__ == "__main__":
     
 
@@ -976,7 +1031,7 @@ if __name__ == "__main__":
             arrError.append(error_handler.newError(showKey,'WAR-SYN-NOT-GEN-SYN-TREE'))
         print('\n\n')
         if len(arrError) > 0:
-            raise IOError(arrError)
+            raise IOError(arrError) 
     except Exception as e:
         for i in range(len(e.args[0])):
             print(e.args[0][i])

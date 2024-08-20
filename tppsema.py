@@ -22,6 +22,7 @@ from tpplex import tokens
 from mytree import MyNode
 from anytree.exporter import DotExporter, UniqueDotExporter
 from anytree import RenderTree, AsciiStyle
+from tppparser import generate_syntax_tree
 
 from myerror import MyError
 
@@ -46,5 +47,7 @@ if __name__ == "__main__":
     elif not os.path.exists(argv[1]):
         raise IOError(error_handler.newError('ERR-SEM-FILE-NOT-EXISTS'))
     else:
-        data = open(argv[1])
-        source_file = data.read()
+        #data = open(argv[1])
+        args = ['meu_programa.tpp', '-k']
+        tree = generate_syntax_tree(args)
+        
