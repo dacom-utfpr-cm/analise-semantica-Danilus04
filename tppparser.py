@@ -930,7 +930,7 @@ parser = yacc.yacc(method="LALR", optimize=True, start='programa', debug=True,
 
 def generate_syntax_tree(args):
     error_handler = MyError('SemaErrors')
-    root = None
+    global root
     arrError = []
     showKey = False
     haveTPP = False
@@ -957,6 +957,7 @@ def generate_syntax_tree(args):
             with open(args[locationTTP], 'r') as data:
                 source_file = data.read()
                 parser.parse(source_file)
+                
 
         if root and root.children != ():
             print("Generating Syntax Tree Graph...")
