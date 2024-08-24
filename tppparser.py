@@ -947,12 +947,14 @@ def generate_syntax_tree(args):
 
     try:
         if len(args) < 3 and showKey:
-            raise TypeError(error_handler.newError(showKey, 'ERR-LEX-USE'))
-
+            arrError.append((error_handler.newError(showKey, 'ERR-SYN-USE')))
+            raise IOError(arrError)    
         if not haveTPP:
-            raise IOError(error_handler.newError(showKey, 'ERR-LEX-NOT-TPP'))
+            arrError.append((error_handler.newError(showKey, 'ERR-SYN-NOT-TPP')))
+            raise IOError(arrError)           
         elif not os.path.exists(args[locationTTP]):
-            raise IOError(error_handler.newError(showKey, 'ERR-LEX-FILE-NOT-EXISTS'))
+            arrError.append((error_handler.newError(showKey, 'ERR-SYN-FILE-NOT-EXISTS')))
+            raise IOError(arrError)
         else:
             with open(args[locationTTP], 'r') as data:
                 source_file = data.read()
@@ -960,17 +962,18 @@ def generate_syntax_tree(args):
                 
 
         if root and root.children != ():
-            print("Generating Syntax Tree Graph...")
+            #print("Generating Syntax Tree Graph...")
             UniqueDotExporter(root).to_picture(args[locationTTP] + ".unique.ast.png")
             DotExporter(root).to_dotfile(args[locationTTP] + ".ast.dot")
             UniqueDotExporter(root).to_dotfile(args[locationTTP] + ".unique.ast.dot")
-            print("Graph was generated.\nOutput file: " + args[locationTTP] + ".ast.png")
+            #print("Graph was generated.\nOutput file: " + args[locationTTP] + ".ast.png")
         else:
             arrError.append(error_handler.newError(showKey, 'WAR-SYN-NOT-GEN-SYN-TREE'))
 
         if len(arrError) > 0:
             raise IOError(arrError)
 
+        
         return root
 
     except Exception as e:
@@ -999,12 +1002,12 @@ if __name__ == "__main__":
 
     try:
         if(len(sys.argv) < 3 and showKey == True):
-            raise TypeError(error_handler.newError(showKey,'ERR-LEX-USE'))
+            raise TypeError(error_handler.newError(showKey,'ERR-SYN-USE'))
 
         if haveTPP == False:
-            raise IOError(error_handler.newError(showKey,'ERR-LEX-NOT-TPP'))
+            raise IOError(error_handler.newError(showKey,'ERR-SYN-NOT-TPP'))
         elif not os.path.exists(argv[locationTTP]):
-            raise IOError(error_handler.newError(showKey,'ERR-LEX-FILE-NOT-EXISTS'))
+            raise IOError(error_handler.newError(showKey,'ERR-SYN-FILE-NOT-EXISTS'))
         else:
             data = open(argv[locationTTP])
 

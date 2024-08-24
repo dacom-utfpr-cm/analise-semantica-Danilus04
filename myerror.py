@@ -20,6 +20,9 @@ class MyError():
       else: 
         return(message + key)
     else:  
+      if(linha == None or coluna == None):
+        message = ''
+        
       if(key):
         message += self.config.get(self.errorType, key)
       
