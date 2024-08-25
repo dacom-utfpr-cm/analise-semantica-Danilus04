@@ -8,6 +8,7 @@ import logging
 showKey = False 
 haveTPP = False
 arrError = []
+semTable = []
 
 logging.basicConfig(
      level = logging.DEBUG,
@@ -23,51 +24,74 @@ import ply.yacc as yacc
 # Get the token map from the lexer.  This is required.
 from tpplex import tokens
 
+#from anytree.exporter import DotExporter, UniqueDotExporter
 from mytree import MyNode
-from anytree.exporter import DotExporter, UniqueDotExporter
-from anytree import RenderTree, AsciiStyle
+from anytree import RenderTree, AsciiStyle, PreOrderIter
+
 from tppparser import generate_syntax_tree
 
 from myerror import MyError
+from enum import Enum
 
 error_handler = MyError('SemaErrors')
 
 #root = None
 
-def find_function(node, function_name):
-    # Verifica se o nó atual é None
-    if node is None:
-        print("Node is None.")
-        return None
-
-    # Verifica se o nó atual tem filhos
-    if not hasattr(node, 'children'):
-        print(f"Node '{node}' does not have children attribute.")
-        return None
-
-    # Verifica se o nó atual representa uma função com o nome 'principal'
-    if hasattr(node, 'name') and node.name == function_name:
-        return node
-    
-    # Percorre os filhos do nó atual
-    for child in node.children:
-        result = find_function(child, function_name)
-        if result:
-            return result
-    
-    return None
+class PalavrasChaves(Enum):
+    declaracao_funcao = "declaracao_funcao"
+    declaracao_variaveis = "declaracao_variaveis"
 
 
-def findingSemanticErrors(tree):
+def creatingSemanticTable(tree):
     global haveTPP
     global showKey
     global arrError
 
-    if(find_function(tree, 'principal') == None):
-        arrError.append(error_handler.newError(showKey,'ERR-SEM-MAIN-NOT-DECL'))
-    
+    nodeAux = None
+    type = None
+    name = None
+
+    # Explora a árvore nó por nó
+    for node in PreOrderIter(tree):
+        #print(f"Visitando nó: {node.name}")
+
+        # Tabela palavre chaves
+        if hasattr(node, 'name') and node.name == PalavrasChaves.declaracao_variaveis.value:
+            
+            nodeAux = node.children[0] 
+            nodeAux = nodeAux.children[0] 
+            type = nodeAux.name
+
+            nodeAux = node.children[2] 
+            nodeAux = nodeAux.children[0]
+            nodeAux = nodeAux.children[0]
+            nodeAux = nodeAux.children[0]
+            name = nodeAux.name
+
+            #print(f"nodeAux = {nodeAux.name}")
+            semTable.append({"declaration": node.name, "type": type, "id": name})
+
+        if hasattr(node, 'name') and node.name == PalavrasChaves.declaracao_funcao.value:
+            
+            nodeAux = node.children[0] 
+            nodeAux = nodeAux.children[0] 
+            type = nodeAux.name
+
+            nodeAux = node.children[1] 
+            nodeAux = nodeAux.children[0]
+            nodeAux = nodeAux.children[0]
+            name = nodeAux.name
+
+            #print(f"nodeAux = {nodeAux.name}")
+            semTable.append({"declaration": node.name, "type": type, "id": name})
+        
+        # Adicione aqui outras verificações semânticas que você deseja realizar
+        # Por exemplo: verificar tipos, declarar variáveis, etc.
+
+    print(semTable)
     if len(arrError) > 0:
-            raise IOError(arrError)
+        raise IOError(arrError)
+
         
     
 
@@ -102,7 +126,7 @@ def semanticMain(args):
             #for pre, fill, node in RenderTree(root):
             #    print("%s%s" % (pre, node.name))
 
-            findingSemanticErrors(tree)
+            creatingSemanticTable(tree)
             
 
             
