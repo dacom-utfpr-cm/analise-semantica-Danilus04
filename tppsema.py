@@ -33,6 +33,9 @@ from tppparser import generate_syntax_tree
 from myerror import MyError
 from enum import Enum
 
+import pprint
+#TODO: REMOVER ISSO AQ DEPOIS
+
 error_handler = MyError('SemaErrors')
 
 #root = None
@@ -46,6 +49,7 @@ class PalavrasChaves(Enum):
     retorna = "retorna"
     fator = "fator"
 
+#Não é eficiente para declaração de função
 def find_ID_and_factor(node):
     """
     Função recursiva para encontrar todos os nós com o nome especificado.
@@ -60,6 +64,9 @@ def find_ID_and_factor(node):
     #print(node.name)
     
     # Verifica se o nome do nó atual corresponde ao nome buscado
+    if node.name == PalavrasChaves.chamada_funcao.value:
+        return found_nodes
+
     if node.name == PalavrasChaves.fator.value:
         nodeAux = node.children[0]
         nodeAux = nodeAux.children[0]
@@ -88,7 +95,7 @@ def creatingSemanticTable(tree):
 
     # Explora a árvore nó por nó
     for node in PreOrderIter(tree):
-
+        data = []
         # Tabela palavre chaves
         # Declaração de Variavel
         if hasattr(node, 'name') and node.name == PalavrasChaves.declaracao_variaveis.value:
@@ -111,19 +118,23 @@ def creatingSemanticTable(tree):
         # Declaração de Função
         if hasattr(node, 'name') and node.name == PalavrasChaves.declaracao_funcao.value:
             
+            #Pega o tipo
             nodeAux = node.children[0] 
             nodeAux = nodeAux.children[0] 
             type = nodeAux.name
 
+            #Pega o nome
             nodeAux = node.children[1] 
             nodeAux = nodeAux.children[0]
             nodeAux = nodeAux.children[0]
             name = nodeAux.name
 
-            
-            #print(f"nodeAux = {nodeAux.name}")
-            #TODO: Verificar quantos parametros ela tem
-            semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope})
+            nodeAux = node.children[1] 
+            nodeAux = nodeAux.children[2] 
+            data = find_ID_and_factor(nodeAux)
+
+            #TODO: AChar parametros
+            semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope, "data": data})
             scope = name
 
         # Atribuição
@@ -133,11 +144,12 @@ def creatingSemanticTable(tree):
             nodeAux = nodeAux.children[0] 
             nodeAux = nodeAux.children[0] 
             name = nodeAux.name
-
+            
+            data = find_ID_and_factor(node)
+            
             #print(f"nodeAux = {nodeAux.name}")
-            #TODO: provavelmente verificar se vai ter mais IDS na atribuição
-            #TODO: Se for um valor, verificar o tipo dele
-            semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope}) 
+            
+            semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope, "data": data}) 
         
         # Chamada de Função
         if hasattr(node, 'name') and node.name == PalavrasChaves.chamada_funcao.value:
@@ -152,15 +164,16 @@ def creatingSemanticTable(tree):
             #print(f"nodeAux = {nodeAux.name}")
             semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope, "data": data}) 
 
+        # Retorno
         if hasattr(node, 'name') and node.name == PalavrasChaves.retorna.value:
 
             if len(node.children) > 2:
                 nodeAux = node.children[2]
                 data = find_ID_and_factor(nodeAux)
-
+                name = None
                 semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope, "data": data}) 
 
-    print(semTable)
+    pprint.pprint(semTable)
     if len(arrError) > 0:
         raise IOError(arrError)
 
