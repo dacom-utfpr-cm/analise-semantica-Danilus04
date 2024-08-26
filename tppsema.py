@@ -40,7 +40,40 @@ error_handler = MyError('SemaErrors')
 class PalavrasChaves(Enum):
     declaracao_funcao = "declaracao_funcao"
     declaracao_variaveis = "declaracao_variaveis"
+    atribuicao = "atribuicao"
+    chamada_funcao = "chamada_funcao"
+    fim = "FIM"
+    retorna = "retorna"
+    fator = "fator"
 
+def find_ID_and_factor(node):
+    """
+    Função recursiva para encontrar todos os nós com o nome especificado.
+
+    :param node: O nó inicial a partir do qual a busca começa.
+    :param name: O nome do nó que estamos buscando.
+    :return: Uma lista de nós que correspondem ao nome fornecido.
+    """
+    found_nodes = []
+    nodeAux = None
+
+    #print(node.name)
+    
+    # Verifica se o nome do nó atual corresponde ao nome buscado
+    if node.name == PalavrasChaves.fator.value:
+        nodeAux = node.children[0]
+        nodeAux = nodeAux.children[0]
+        if(nodeAux.name == 'ID'):
+            nodeAux = nodeAux.children[0]
+            found_nodes.append(nodeAux.name)    
+        else: 
+            found_nodes.append(nodeAux.name)
+    
+    # Busca recursivamente nos filhos do nó atual
+    for child in node.children:
+        found_nodes.extend(find_ID_and_factor(child))
+    
+    return found_nodes
 
 def creatingSemanticTable(tree):
     global haveTPP
@@ -50,12 +83,14 @@ def creatingSemanticTable(tree):
     nodeAux = None
     type = None
     name = None
+    scope = None
+    data = []
 
     # Explora a árvore nó por nó
     for node in PreOrderIter(tree):
-        #print(f"Visitando nó: {node.name}")
 
         # Tabela palavre chaves
+        # Declaração de Variavel
         if hasattr(node, 'name') and node.name == PalavrasChaves.declaracao_variaveis.value:
             
             nodeAux = node.children[0] 
@@ -68,9 +103,12 @@ def creatingSemanticTable(tree):
             nodeAux = nodeAux.children[0]
             name = nodeAux.name
 
-            #print(f"nodeAux = {nodeAux.name}")
-            semTable.append({"declaration": node.name, "type": type, "id": name})
+            semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope})
 
+        if hasattr(node, 'name') and node.name == PalavrasChaves.fim.value:
+            scope = None
+
+        # Declaração de Função
         if hasattr(node, 'name') and node.name == PalavrasChaves.declaracao_funcao.value:
             
             nodeAux = node.children[0] 
@@ -82,11 +120,45 @@ def creatingSemanticTable(tree):
             nodeAux = nodeAux.children[0]
             name = nodeAux.name
 
+            
             #print(f"nodeAux = {nodeAux.name}")
-            semTable.append({"declaration": node.name, "type": type, "id": name})
+            #TODO: Verificar quantos parametros ela tem
+            semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope})
+            scope = name
+
+        # Atribuição
+        if hasattr(node, 'name') and node.name == PalavrasChaves.atribuicao.value:
+            
+            nodeAux = node.children[0] 
+            nodeAux = nodeAux.children[0] 
+            nodeAux = nodeAux.children[0] 
+            name = nodeAux.name
+
+            #print(f"nodeAux = {nodeAux.name}")
+            #TODO: provavelmente verificar se vai ter mais IDS na atribuição
+            #TODO: Se for um valor, verificar o tipo dele
+            semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope}) 
         
-        # Adicione aqui outras verificações semânticas que você deseja realizar
-        # Por exemplo: verificar tipos, declarar variáveis, etc.
+        # Chamada de Função
+        if hasattr(node, 'name') and node.name == PalavrasChaves.chamada_funcao.value:
+            
+            nodeAux = node.children[0] 
+            nodeAux = nodeAux.children[0] 
+            name = nodeAux.name
+
+            nodeAux = node.children[2] 
+            data = find_ID_and_factor(nodeAux)
+            
+            #print(f"nodeAux = {nodeAux.name}")
+            semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope, "data": data}) 
+
+        if hasattr(node, 'name') and node.name == PalavrasChaves.retorna.value:
+
+            if len(node.children) > 2:
+                nodeAux = node.children[2]
+                data = find_ID_and_factor(nodeAux)
+
+                semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope, "data": data}) 
 
     print(semTable)
     if len(arrError) > 0:
