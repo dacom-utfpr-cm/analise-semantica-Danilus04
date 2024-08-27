@@ -10,6 +10,7 @@ inteiro principal()
 	b := 10
 	c := b + a
 
-	a := func(10,a)
+	principal()
+	
 	retorna(a + b + c + d)
 fim

@@ -128,6 +128,7 @@ def creatingSemanticTable(tree):
     name = None
     scope = None
     data = []
+    semTable = []
 
     # Explora a árvore nó por nó
     for node in PreOrderIter(tree):
@@ -209,21 +210,146 @@ def creatingSemanticTable(tree):
                 data = find_ID_and_factor(nodeAux)
                 name = None
                 semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope, "data": data}) 
+    
+    # pprint.pprint(semTable)
+    # if len(arrError) > 0:
+    #     raise IOError(arrError)
+    
+    return semTable
 
-    pprint.pprint(semTable)
-    if len(arrError) > 0:
-        raise IOError(arrError)
+def extrair_funcoes_declaradas(declaracoes):
+    funcoes_declaradas = []
+    
+    for declaracao in declaracoes:
+        if declaracao['declaration'] == 'declaracao_funcao':
+            funcoes_declaradas.append(declaracao['id'])
+    
+    return funcoes_declaradas
+
+def verificarFuncaoPrincipal(semTable):
+    global arrError
+    global showKey
+    principal_existe = False
+    for table in semTable:
+        if table['declaration'] == 'declaracao_funcao' and table['id'] == 'principal':
+            principal_existe = True
+            break
+    if not principal_existe:
+        arrError.append(error_handler.newError(showKey, 'ERR-SEM-MAIN-NOT-DECL'))
+
+def verificarDeclaracaoDeFuncoes(semTable):
+    global arrError
+    global showKey
+    funcoesDeclaradas = extrair_funcoes_declaradas(semTable)
+
+    for declaracao in semTable:
+        if declaracao['declaration'] == 'chamada_funcao':
+            func_id = declaracao['id']
+            if func_id not in funcoesDeclaradas:
+                arrError.append(error_handler.newError(showKey, 'ERR-SEM-CALL-FUNC-NOT-DECL'))
+
+def verificarParametrosFuncoes(semantic_table):
+    global arrError
+    global showKey
+
+    # Cria um dicionário para armazenar as funções e seus parâmetros formais
+    declaracoes_funcoes = {}
+    
+    for item in semantic_table:
+        if item['declaration'] == 'declaracao_funcao':
+            declaracoes_funcoes[item['id']] = len(item.get('data', []))  # Armazena a quantidade de parâmetros formais
+
+    # Itera sobre a tabela para verificar as chamadas de função
+    for item in semantic_table:
+        if item['declaration'] == 'chamada_funcao':
+            func_id = item['id']
+            parametros_reais = len(item.get('data', []))  # Conta os parâmetros reais da chamada
+
+            if func_id in declaracoes_funcoes:
+                parametros_formais = declaracoes_funcoes[func_id]
+
+                if parametros_reais < parametros_formais:
+                    arrError.append(error_handler.newError(showKey, 'ERR-SEM-CALL-FUNC-WITH-FEW-ARGS'))
+                    #print(f"Erro (ERR-SEM-CALL-FUNC-WITH-FEW-ARGS): Chamada à função '{func_id}' com número de parâmetros menor que o declarado.")
+                elif parametros_reais > parametros_formais:
+                    arrError.append(error_handler.newError(showKey, 'ERR-SEM-CALL-FUNC-WITH-MANY-ARGS'))
+                    #print(f"Erro (ERR-SEM-CALL-FUNC-WITH-MANY-ARGS): Chamada à função '{func_id}' com número de parâmetros maior que o declarado.")
+            else:
+                print(f"Erro: Função '{func_id}' chamada, mas não declarada.")
+
+def verificarFuncoesNaoUtilizadas(semTable):
+    funcoesDeclaradas = extrair_funcoes_declaradas(semTable)
+    funcoesUtilizadas = set()
+
+    # Coletar todas as funções utilizadas
+    for declaracao in semTable:
+        if declaracao['declaration'] == PalavrasChaves.chamada_funcao.value:
+            func_id = declaracao['id']
+            funcoesUtilizadas.add(func_id)
+
+    funcoesUtilizadas.add('principal')
+    #para não falar que a função principal nao foi declarada
+
+    # Verificar se há funções declaradas que não foram utilizadas
+    for func in funcoesDeclaradas:
+        if func not in funcoesUtilizadas:
+            arrError.append(error_handler.newError(showKey, f"WAR-SEM-FUNC-DECL-NOT-USED"))
+
+def verificarTipoRetorno(semTable):
+    global arrError
+    global showKey
+    
+    mesmoRetorno = True
+    achouRetorno = False
+    for declaracao in semTable:
+        tipoDaFuncao = None
+        if declaracao['declaration'] == PalavrasChaves.declaracao_funcao.value:
+            for declaracao2 in semTable:
+                if declaracao2['declaration'] == PalavrasChaves.retorna.value and declaracao2['scope'] == declaracao['id']:
+                    achouRetorno = True
+                    tipoDaFuncao = declaracao['type']
+                    data = declaracao2['data']
+                    for var in data:
+                        tipoVar = verificarTipoDaVariavel(semTable, var, declaracao2['scope'])
+                        
+                        if tipoVar != tipoDaFuncao:
+                            mesmoRetorno = False
+                            
+    if(not mesmoRetorno):
+        arrError.append(error_handler.newError(showKey, f"ERR-SEM-FUNC-RET-TYPE-ERROR"))
+
+    if(not achouRetorno):
+        arrError.append(error_handler.newError(showKey, f"ERR-SEM-FUNC-RET-TYPE-ERROR"))
+
+def verificarTipoDaVariavel(semTable, name, scope):
+    for declaracao in semTable:
+        if declaracao['declaration'] == PalavrasChaves.declaracao_variaveis.value or declaracao['declaration'] == PalavrasChaves.declaracao_funcao.value:
+            if declaracao['scope'] == scope and declaracao['id'] == name:
+                
+                return declaracao['type']
+
+def verificarPricipalChamada(semTable):
+    for declaracao in semTable:
+        if declaracao['declaration'] == PalavrasChaves.chamada_funcao.value:
+            if declaracao['id'] == 'principal':
+                arrError.append(error_handler.newError(showKey, "ERR-SEM-CALL-FUNC-MAIN-NOT-ALLOWED"))
 
 def checkingTable(semTable):
-    global arrError
-    #1.1 Função Principal Existe ?
-    principal = False
-    for table in semTable:
-        if table['declaration'] == PalavrasChaves.chamada_funcao.value and table['id'] == 'principal':
-            principal = True
-    
-    if principal != True:
-        
+    #1.1
+    verificarFuncaoPrincipal(semTable)
+    #1.2
+    verificarDeclaracaoDeFuncoes(semTable)
+    #1.3    
+    verificarParametrosFuncoes(semTable)
+    #1.4
+    verificarFuncoesNaoUtilizadas(semTable)
+    #1.5
+    verificarTipoRetorno(semTable)
+    #1.6
+    verificarPricipalChamada(semTable)
+
+    # Continue com outras verificações, se necessário
+
 
 def semanticMain(args):
     global haveTPP
@@ -239,35 +365,38 @@ def semanticMain(args):
             showKey = True
 
     try:
-        if(len(args) < 3 and showKey == True):
-            arrError.append(error_handler.newError(showKey,'ERR-SEM-USE'))
+        if len(args) < 3 and showKey:
+            arrError.append(error_handler.newError(showKey, 'ERR-SEM-USE'))
             raise IOError(arrError)
-        if haveTPP == False:
-            arrError.append(error_handler.newError(showKey,'ERR-SEM-NOT-TPP'))
+        
+        if not haveTPP:
+            arrError.append(error_handler.newError(showKey, 'ERR-SEM-NOT-TPP'))
             raise IOError(arrError)
-        elif not os.path.exists(args[locationTTP]):
-            arrError.append(error_handler.newError(showKey,'ERR-SEM-FILE-NOT-EXISTS'))
+        
+        if not os.path.exists(args[locationTTP]):
+            arrError.append(error_handler.newError(showKey, 'ERR-SEM-FILE-NOT-EXISTS'))
             raise IOError(arrError)
-        else:
-            tree = generate_syntax_tree(args)         
+        
+        # Se chegou aqui, tudo está OK
+        tree = generate_syntax_tree(args)         
+        # Exemplo de renderização da árvore (descomente se necessário)
+        # print(tree)
+        # print(RenderTree(tree, style=AsciiStyle()).by_attr())
+        # for pre, fill, node in RenderTree(root):
+        #     print("%s%s" % (pre, node.name))
 
-            #print(tree)        
-            #print(RenderTree(tree, style=AsciiStyle()).by_attr())
-            #for pre, fill, node in RenderTree(root):
-            #    print("%s%s" % (pre, node.name))
+        semanticTable = creatingSemanticTable(tree)
+        checkingTable(semanticTable)
 
-            creatingSemanticTable(tree)
-            
-
-            
+        # Verifica se há erros após a análise semântica
+        if len(arrError) > 0:
+            raise IOError(arrError)
 
     except Exception as e:
-        if(showKey):
-            for i in range(len(e.args[0])):
-                print(e.args[0][i])
-        else:
-            for i in range(len(e.args[0])):
-                print(e.args[0][i])
+        for i in range(len(e.args[0])):
+            print(e.args[0][i])
+            #TODO : sem a flag -k, imprime de maneira errada
+
 
 # Programa Principal.
 if __name__ == "__main__":
