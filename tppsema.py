@@ -49,6 +49,7 @@ class PalavrasChaves(Enum):
     retorna = "retorna"
     fator = "fator"
     parametro = "parametro"
+    var = "var"
 
 
 #Não é eficiente para declaração de função
@@ -215,6 +216,14 @@ def creatingSemanticTable(tree):
                 data = find_ID_and_factor(nodeAux)
                 name = None
                 semTable.append({"declaration": node.name, "type": '-', "id": name, "scope": scope, "data": data}) 
+
+        if hasattr(node, 'name') and node.name == PalavrasChaves.var.value:
+
+            nodeAux = node.children[0]
+            nodeAux = nodeAux.children[0]
+            #data = find_ID_and_factor(nodeAux)
+            name = nodeAux.name
+            semTable.append({"declaration": node.name, "id": name, "scope": scope}) 
     
     # pprint.pprint(semTable)
     # if len(arrError) > 0:
@@ -358,40 +367,47 @@ def verificarPricipalChamada(semTable):
                 if declaracao['scope'] == 'principal':
                     arrError.append(error_handler.newError(showKey, "WAR-SEM-CALL-REC-FUNC-MAIN"))
 
-# def verificarVariavelDeclarada(semTable):
-#     outrasPalavrasChaves = ['NUM_INTEIRO', 'FLUTUANTE']
-#     global arrError
-#     global showKey
+def verificarDeclaracaoEInicializacao(semTable):
+    global arrError
+    global showKey
     
+    # Armazena as variáveis declaradas e inicializadas por escopo
+    variaveisDeclaradas = {}
+    variaveisInicializadas = {}
+    variaveisVerificadas = {}
+    
+    # Itera sobre a tabela semântica para preencher as variáveis declaradas e inicializadas
+    for declaracao in semTable:
+        scope = declaracao.get('scope', None)
+        
+        if declaracao['declaration'] == 'declaracao_variaveis':
+            if scope not in variaveisDeclaradas:
+                variaveisDeclaradas[scope] = []
+            variaveisDeclaradas[scope].append(declaracao['id'])
+        
+        if declaracao['declaration'] == 'atribuicao':
+            if scope not in variaveisInicializadas:
+                variaveisInicializadas[scope] = []
+            variaveisInicializadas[scope].append(declaracao['id'])
+    
+    # Verifica se as variáveis utilizadas foram declaradas e inicializadas
+    for declaracao in semTable:
+        scope = declaracao.get('scope', None)
+        
+        if declaracao['declaration'] == 'var':
+            var_id = declaracao['id']
+            
+            if scope not in variaveisVerificadas:
+                variaveisVerificadas[scope] = set()
 
-#     for declaracao in semTable:
-#         #Procura declaracoes de atribuicao
-#         inicializada = False
-#         declarada = False
-#         data = []
-#         if declaracao['declaration'] == PalavrasChaves.atribuicao.value or declaracao['declaration'] == PalavrasChaves.chamada_funcao.value:
-#             data = declaracao['data']
-#             data.append(declaracao['id'])
-#             #verifica se a variavel foi declarada
-#             print(data)
-#             for val in data:
-#                 #verifica se val não é palavra chave
-#                 if val not in outrasPalavrasChaves:
-#                     for declaracao2 in semTable:
-#                         #Procura declaracao de atribuicao
-#                         if declaracao2['declaration'] == PalavrasChaves.atribuicao.value:
-#                             if declaracao2['id'] == val and declaracao2['scope'] == declaracao['scope']:
-#                                 inicializada = True
+            # Só continua a verificação se a variável ainda não foi verificada neste escopo
+            if var_id not in variaveisVerificadas[scope]:
+                variaveisVerificadas[scope].add(var_id)
 
-#                         if declaracao2['declaration'] == PalavrasChaves.declaracao_variaveis.value:
-#                             if declaracao2['id'] == val and declaracao2['scope'] == declaracao['scope']:
-#                                 declarada = True
-
-#                     if declarada != True:
-#                         arrError.append(error_handler.newError(showKey, "ERR-SEM-VAR-NOT-DECL"))
-
-#                     elif inicializada != True:
-#                         arrError.append(error_handler.newError(showKey, "WAR-SEM-VAR-DECL-NOT-INIT"))
+                if var_id not in variaveisDeclaradas.get(scope, []):
+                    arrError.append(error_handler.newError(showKey, "ERR-SEM-VAR-NOT-DECL"))
+                elif var_id not in variaveisInicializadas.get(scope, []):
+                    arrError.append(error_handler.newError(showKey, "WAR-SEM-VAR-DECL-NOT-INIT"))
 
 
                     
@@ -410,6 +426,7 @@ def checkingTable(semTable):
     #1.6 e 1.7
     verificarPricipalChamada(semTable)
     #2.1
+    verificarDeclaracaoEInicializacao(semTable)
     #verificarVariavelDeclarada(semTable)
 
 def semanticMain(args):
