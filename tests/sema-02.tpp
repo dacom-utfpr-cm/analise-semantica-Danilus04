@@ -5,11 +5,8 @@ fim
 inteiro principal()
 	flutuante: a
 	flutuante: b
-	inteiro: c
-	inteiro: d[1.2]
-	b := 10
-	c := b + a
-	principal()
+
+	c = func(a,1)
 	
-	retorna(a + b + c + d)
+	retorna(0)
 fim

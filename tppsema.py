@@ -84,7 +84,7 @@ def find_ID_and_factor(node):
     
     return found_nodes
 
-def find_parameters(node,semtable,scope):
+def find_parameters(node,semtable,scope,data):
     """
     Função recursiva para encontrar todos os nós com o nome especificado.
 
@@ -106,17 +106,18 @@ def find_parameters(node,semtable,scope):
         nodeAux = node.children[2]
         nodeAux = nodeAux.children[0]
         name = nodeAux.name
+        data.append(name)
 
         semtable.append({"declaration": PalavrasChaves.declaracao_variaveis.value
                          , "type": type
                          , "id": name
                          , "scope": scope})
    
-
+    
     
     # Busca recursivamente nos filhos do nó atual
     for child in node.children:
-        find_parameters(child,semTable,scope)
+        find_parameters(child,semtable,scope,data)
     
 def creatingSemanticTable(tree):
     global haveTPP
@@ -170,10 +171,14 @@ def creatingSemanticTable(tree):
             nodeAux = nodeAux.children[2] 
             data = []
 
-            #TODO: AChar parametros
-            semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope, "data": data})
+            scopeAux = scope
             scope = name
-            find_parameters(nodeAux,semTable,scope)
+            find_parameters(nodeAux,semTable,scope,data)
+            
+            scope = scopeAux
+            semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope, "data": data})
+            
+            scope = name
 
         # Atribuição
         if hasattr(node, 'name') and node.name == PalavrasChaves.atribuicao.value:
@@ -257,11 +262,12 @@ def verificarParametrosFuncoes(semantic_table):
     
     for item in semantic_table:
         if item['declaration'] == 'declaracao_funcao':
+            
             declaracoes_funcoes[item['id']] = len(item.get('data', []))  # Armazena a quantidade de parâmetros formais
 
     # Itera sobre a tabela para verificar as chamadas de função
     for item in semantic_table:
-        if item['declaration'] == 'chamada_funcao':
+        if item['declaration'] == PalavrasChaves.chamada_funcao.value:
             func_id = item['id']
             parametros_reais = len(item.get('data', []))  # Conta os parâmetros reais da chamada
 
@@ -299,10 +305,11 @@ def verificarTipoRetorno(semTable):
     global arrError
     global showKey
     
-    mesmoRetorno = True
-    achouRetorno = False
     for declaracao in semTable:
         tipoDaFuncao = None
+        mesmoRetorno = True
+        achouRetorno = False
+
         if declaracao['declaration'] == PalavrasChaves.declaracao_funcao.value:
             for declaracao2 in semTable:
                 if declaracao2['declaration'] == PalavrasChaves.retorna.value and declaracao2['scope'] == declaracao['id']:
@@ -310,25 +317,40 @@ def verificarTipoRetorno(semTable):
                     tipoDaFuncao = declaracao['type']
                     data = declaracao2['data']
                     for var in data:
+
                         tipoVar = verificarTipoDaVariavel(semTable, var, declaracao2['scope'])
                         
                         if tipoVar != tipoDaFuncao:
+                            
                             mesmoRetorno = False
                             
-    if(not mesmoRetorno):
-        arrError.append(error_handler.newError(showKey, f"ERR-SEM-FUNC-RET-TYPE-ERROR"))
+            if(not mesmoRetorno):
+                
+                arrError.append(error_handler.newError(showKey, f"ERR-SEM-FUNC-RET-TYPE-ERROR"))
 
-    if(not achouRetorno):
-        arrError.append(error_handler.newError(showKey, f"ERR-SEM-FUNC-RET-TYPE-ERROR"))
+            if(not achouRetorno):
+                #print('aq')
+                arrError.append(error_handler.newError(showKey, f"ERR-SEM-FUNC-RET-TYPE-ERROR"))
 
 def verificarTipoDaVariavel(semTable, name, scope):
+    
+    #RESOLVER bug ONDE INTEIRO != NUM_INTEIRO
+    outrasPalavrasChaves = ['NUM_INTEIRO', 'FLUTUANTE']
+    if(name in outrasPalavrasChaves):
+        if name == 'NUM_INTEIRO':
+            return 'INTEIRO'
+        return name    
+
     for declaracao in semTable:
+        
         if declaracao['declaration'] == PalavrasChaves.declaracao_variaveis.value or declaracao['declaration'] == PalavrasChaves.declaracao_funcao.value:
             if declaracao['scope'] == scope and declaracao['id'] == name:
-                
                 return declaracao['type']
 
 def verificarPricipalChamada(semTable):
+    global arrError
+    global showKey
+
     for declaracao in semTable:
         if declaracao['declaration'] == PalavrasChaves.chamada_funcao.value:
             if declaracao['id'] == 'principal':
@@ -336,6 +358,43 @@ def verificarPricipalChamada(semTable):
                 if declaracao['scope'] == 'principal':
                     arrError.append(error_handler.newError(showKey, "WAR-SEM-CALL-REC-FUNC-MAIN"))
 
+# def verificarVariavelDeclarada(semTable):
+#     outrasPalavrasChaves = ['NUM_INTEIRO', 'FLUTUANTE']
+#     global arrError
+#     global showKey
+    
+
+#     for declaracao in semTable:
+#         #Procura declaracoes de atribuicao
+#         inicializada = False
+#         declarada = False
+#         data = []
+#         if declaracao['declaration'] == PalavrasChaves.atribuicao.value or declaracao['declaration'] == PalavrasChaves.chamada_funcao.value:
+#             data = declaracao['data']
+#             data.append(declaracao['id'])
+#             #verifica se a variavel foi declarada
+#             print(data)
+#             for val in data:
+#                 #verifica se val não é palavra chave
+#                 if val not in outrasPalavrasChaves:
+#                     for declaracao2 in semTable:
+#                         #Procura declaracao de atribuicao
+#                         if declaracao2['declaration'] == PalavrasChaves.atribuicao.value:
+#                             if declaracao2['id'] == val and declaracao2['scope'] == declaracao['scope']:
+#                                 inicializada = True
+
+#                         if declaracao2['declaration'] == PalavrasChaves.declaracao_variaveis.value:
+#                             if declaracao2['id'] == val and declaracao2['scope'] == declaracao['scope']:
+#                                 declarada = True
+
+#                     if declarada != True:
+#                         arrError.append(error_handler.newError(showKey, "ERR-SEM-VAR-NOT-DECL"))
+
+#                     elif inicializada != True:
+#                         arrError.append(error_handler.newError(showKey, "WAR-SEM-VAR-DECL-NOT-INIT"))
+
+
+                    
 
 def checkingTable(semTable):
     #1.1
@@ -350,6 +409,8 @@ def checkingTable(semTable):
     verificarTipoRetorno(semTable)
     #1.6 e 1.7
     verificarPricipalChamada(semTable)
+    #2.1
+    #verificarVariavelDeclarada(semTable)
 
 def semanticMain(args):
     global haveTPP
