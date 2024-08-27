@@ -333,6 +333,9 @@ def verificarPricipalChamada(semTable):
         if declaracao['declaration'] == PalavrasChaves.chamada_funcao.value:
             if declaracao['id'] == 'principal':
                 arrError.append(error_handler.newError(showKey, "ERR-SEM-CALL-FUNC-MAIN-NOT-ALLOWED"))
+                if declaracao['scope'] == 'principal':
+                    arrError.append(error_handler.newError(showKey, "WAR-SEM-CALL-REC-FUNC-MAIN"))
+
 
 def checkingTable(semTable):
     #1.1
@@ -345,11 +348,8 @@ def checkingTable(semTable):
     verificarFuncoesNaoUtilizadas(semTable)
     #1.5
     verificarTipoRetorno(semTable)
-    #1.6
+    #1.6 e 1.7
     verificarPricipalChamada(semTable)
-
-    # Continue com outras verificações, se necessário
-
 
 def semanticMain(args):
     global haveTPP
