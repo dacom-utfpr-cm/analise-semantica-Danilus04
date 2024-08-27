@@ -48,6 +48,8 @@ class PalavrasChaves(Enum):
     fim = "FIM"
     retorna = "retorna"
     fator = "fator"
+    parametro = "parametro"
+
 
 #Não é eficiente para declaração de função
 def find_ID_and_factor(node):
@@ -82,6 +84,40 @@ def find_ID_and_factor(node):
     
     return found_nodes
 
+def find_parameters(node,semtable,scope):
+    """
+    Função recursiva para encontrar todos os nós com o nome especificado.
+
+    :param node: O nó inicial a partir do qual a busca começa.
+    :param name: O nome do nó que estamos buscando.
+    :return: Uma lista de nós que correspondem ao nome fornecido.
+    """
+    nodeAux = None
+    type = None
+    name = None
+    #print(node.name)
+    
+    # Verifica se o nome do nó atual corresponde ao nome buscado
+
+    if node.name == PalavrasChaves.parametro.value:
+        nodeAux = node.children[0]
+        nodeAux = nodeAux.children[0]
+        type = nodeAux.name
+        nodeAux = node.children[2]
+        nodeAux = nodeAux.children[0]
+        name = nodeAux.name
+
+        semtable.append({"declaration": PalavrasChaves.declaracao_variaveis.value
+                         , "type": type
+                         , "id": name
+                         , "scope": scope})
+   
+
+    
+    # Busca recursivamente nos filhos do nó atual
+    for child in node.children:
+        find_parameters(child,semTable,scope)
+    
 def creatingSemanticTable(tree):
     global haveTPP
     global showKey
@@ -131,11 +167,12 @@ def creatingSemanticTable(tree):
 
             nodeAux = node.children[1] 
             nodeAux = nodeAux.children[2] 
-            data = find_ID_and_factor(nodeAux)
+            data = []
 
             #TODO: AChar parametros
             semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope, "data": data})
             scope = name
+            find_parameters(nodeAux,semTable,scope)
 
         # Atribuição
         if hasattr(node, 'name') and node.name == PalavrasChaves.atribuicao.value:
@@ -177,8 +214,16 @@ def creatingSemanticTable(tree):
     if len(arrError) > 0:
         raise IOError(arrError)
 
-        
+def checkingTable(semTable):
+    global arrError
+    #1.1 Função Principal Existe ?
+    principal = False
+    for table in semTable:
+        if table['declaration'] == PalavrasChaves.chamada_funcao.value and table['id'] == 'principal':
+            principal = True
     
+    if principal != True:
+        
 
 def semanticMain(args):
     global haveTPP
