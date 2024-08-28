@@ -5,8 +5,9 @@ fim
 inteiro principal()
 	flutuante: a
 	flutuante: b
-
-	c = func(a,1)
+	flutuante: d
+	
+	c := func(a,1)
 	
 	retorna(0)
 fim
