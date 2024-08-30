@@ -929,7 +929,7 @@ parser = yacc.yacc(method="LALR", optimize=True, start='programa', debug=True,
                    debuglog=log, write_tables=False, tabmodule='tpp_parser_tab')
 
 def generate_syntax_tree(args):
-    error_handler = MyError('SemaErrors')
+    error_handler = MyError('ParserErrors')
     global root
     arrError = []
     showKey = False
