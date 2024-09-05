@@ -112,7 +112,8 @@ def find_parameters(node,semtable,scope,data):
         semtable.append({"declaration": PalavrasChaves.declaracao_variaveis.value
                          , "type": type
                          , "id": name
-                         , "scope": scope})
+                         , "scope": scope
+                         , "data": "Param"})
    
     
     
@@ -414,7 +415,11 @@ def verificarDeclaracaoEInicializacao(semTable):
     variaveisInicializadas = {}
     variaveisUtilizadas = {}
     variaveisNaoDeclarada = set()
-    variaveisNaoInicializadas = set()
+    variaveisDeclaradasEUtilizadas = {}
+    variaveisDeclaradasEInicializadas = {}
+    variaveisDeclaradasENaoUtilizada = set()
+    variaveisDeclaradasENaoInicializada = set()
+
 
     # Itera sobre a tabela semântica para preencher as variáveis declaradas e inicializadas
     for declaracao in semTable:
@@ -423,8 +428,14 @@ def verificarDeclaracaoEInicializacao(semTable):
         var_id = declaracao.get('id', None)
 
         
+        
         # Preenche o dicionário de variáveis declaradas por escopo
-        if declaracao['declaration'] == 'declaracao_variaveis':            
+        if declaracao['declaration'] == 'declaracao_variaveis':     
+            if declaracao['data'] == "Param":
+                if scope not in variaveisInicializadas:
+                    variaveisInicializadas[scope] = set()
+                variaveisInicializadas[scope].add(var_id)
+            
             if scope not in variaveisDeclaradas:
                 variaveisDeclaradas[scope] = set()  # Usar set para evitar duplicatas
             if(var_id in variaveisDeclaradas[scope]): 
@@ -436,7 +447,7 @@ def verificarDeclaracaoEInicializacao(semTable):
             if scope not in variaveisInicializadas:
                 variaveisInicializadas[scope] = set()
             variaveisInicializadas[scope].add(var_id)
-
+        #TODO: SE FOR DE PARAMETRO JA VEM INICIALIZADAS
         
         # Preenche o dicionário de variáveis utilizadas por escopo
         elif declaracao['declaration'] == 'var':
@@ -444,20 +455,13 @@ def verificarDeclaracaoEInicializacao(semTable):
                 variaveisUtilizadas[scope] = set()
             variaveisUtilizadas[scope].add(var_id)
 
-    print(variaveisDeclaradas)
-    print(variaveisInicializadas)
-    print(variaveisUtilizadas)
-    print("-------------------")
+    #print(variaveisDeclaradas)
+    #print(variaveisInicializadas)
+    #print(variaveisUtilizadas)
+    #print("-------------------")
     
-    for scope, vars_utilizadas in variaveisUtilizadas.items():
-        vars_declaradas = variaveisDeclaradas.get(scope, set())
-        vars_declaradas.update(variaveisDeclaradas.get(None, set()))
-        
-        for var in vars_utilizadas:
-            if var not in vars_declaradas:
-                if(var not in variaveisNaoDeclarada):
-                    arrError.append(error_handler.newError(showKey,'ERR-SEM-VAR-NOT-DECL'))
-                    variaveisNaoDeclarada.add(var)
+
+    
 
     for scope, vars_inicializadas in variaveisInicializadas.items():
         vars_declaradas = variaveisDeclaradas.get(scope, set())
@@ -468,25 +472,68 @@ def verificarDeclaracaoEInicializacao(semTable):
                 if(var not in variaveisNaoDeclarada):
                     arrError.append(error_handler.newError(showKey,'ERR-SEM-VAR-NOT-DECL'))
                     variaveisNaoDeclarada.add(var)
+            else:
+                if scope not in variaveisDeclaradasEInicializadas:
+                    variaveisDeclaradasEInicializadas[scope] = set()
+                variaveisDeclaradasEInicializadas[scope].add(var)
 
-    #TODO: VERIFICAR PRIMEIRAMENTE SCOPO GLOBAL
-    #DEPOIS FAZER O RESTO
-    for var in variaveisDeclaradas[None]:
-        if var
-    #for scope, vars_declaradas in variaveisDeclaradas.items():
-    #    vars_inicializadas = variaveisInicializadas.get(scope, set())
-    #    print(scope, vars_declaradas)
-
-    #DECLARADO MAIS DE UMA VEZ - FEITO
-    #UTILIZADO/INICIALIZADO E NAO DECLARADO - FEITO
-    #DECLARADO E NAO INICIALIZADO
-    #DECLARADO E NAO UTILIZADO
-    #for
+    for scope, vars_utilizadas in variaveisUtilizadas.items():
+        vars_declaradas = variaveisDeclaradas.get(scope, set())
+        vars_declaradas.update(variaveisDeclaradas.get(None, set()))
+        
+        for var in vars_utilizadas:
+            
+            if var not in vars_declaradas:
+                if(var not in variaveisNaoDeclarada):
+                    arrError.append(error_handler.newError(showKey,'ERR-SEM-VAR-NOT-DECL'))
+                    variaveisNaoDeclarada.add(var)
+            else:
+                if scope not in variaveisDeclaradasEUtilizadas:
+                    variaveisDeclaradasEUtilizadas[scope] = set()
+                variaveisDeclaradasEUtilizadas[scope].add(var)
     
+    #print(variaveisDeclaradasEUtilizadas)
+    #print(variaveisDeclaradasEInicializadas)
+    #print("-------------")
 
-    #print(variaveisUtilizadas)
-    #print(variaveisDeclaradas)
-    #print(variaveisInicializadas)
+    
+    for scope, vars_declaradas in variaveisDeclaradas.items():
+        if scope is None:
+            # Cria um conjunto vazio para armazenar todas as variáveis declaradas em todos os escopos
+            vars_declaradasEUtil = set()
+            vars_declaradasEInit = set()
+            
+            # Itera sobre todos os escopos e adiciona suas variáveis ao conjunto
+            for all_scope, all_vars in variaveisDeclaradasEUtilizadas.items():
+                vars_declaradasEUtil.update(all_vars)
+            for all_scope, all_vars in variaveisDeclaradasEInicializadas.items():
+                vars_declaradasEInit.update(all_vars)
+        else:
+            # Caso o escopo não seja None, continue normalmente
+            vars_declaradasEUtil = variaveisDeclaradasEUtilizadas.get(scope, set())
+            vars_declaradasEInit = variaveisDeclaradasEInicializadas.get(scope, set())
+            vars_declaradasEInit.update(variaveisDeclaradasEInicializadas.get(None, set()))
+
+        
+        for var in vars_declaradas:
+            if var not in vars_declaradasEUtil:
+                if(var not in variaveisDeclaradasENaoUtilizada):
+                    variaveisDeclaradasENaoUtilizada.add(var)
+                    #if(var not in vars_declaradasEInit):
+                    arrError.append(error_handler.newError(showKey,'WAR-SEM-VAR-DECL-NOT-USED'))
+            else:
+                print(scope, var, vars_declaradasEInit)
+                if(var not in vars_declaradasEInit):
+                    if( var not in variaveisDeclaradasENaoInicializada):
+                        variaveisDeclaradasENaoInicializada.add(var)
+                        arrError.append(error_handler.newError(showKey,'WAR-SEM-VAR-DECL-NOT-INIT'))
+
+
+    #print(variaveisDeclaradasENaoInicializada)
+    #print(variaveisDeclaradasENaoUtilizada)
+
+#def 
+    
 
 def checkingTable(semTable):
     #1.1
@@ -503,6 +550,8 @@ def checkingTable(semTable):
     verificarPricipalChamada(semTable)
     #2
     verificarDeclaracaoEInicializacao(semTable)
+    #4 arranjos Vetor
+
     #verificarVariavelDeclarada(semTable)
 
 def semanticMain(args):
