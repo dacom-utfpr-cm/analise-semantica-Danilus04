@@ -3,7 +3,10 @@
 {Aviso: Variável 'b' declarada e não utilizada}
 {Erro: Função 'principal' deveria retornar 'inteiro', mas retorna 'vazio'}
 
-inteiro: a, d[3], e, f[2]
+inteiro: a, a, b
+
+b:= 1 + d
+b:= 1 + d
 
 
 inteiro principal()
