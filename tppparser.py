@@ -290,11 +290,14 @@ def p_cabecalho(p):
 
 
 def p_cabecalho_error(p):
-    """cabecalho : ID ABRE_PARENTESE error FECHA_PARENTESE corpo FIM
-                | ID ABRE_PARENTESE lista_parametros FECHA_PARENTESE error FIM
-                | error ABRE_PARENTESE lista_parametros FECHA_PARENTESE corpo FIM 
+    """
+    cabecalho : error ABRE_PARENTESE lista_parametros FECHA_PARENTESE corpo FIM
+                | ID error lista_parametros FECHA_PARENTESE corpo FIM
+                | ID ABRE_PARENTESE error FECHA_PARENTESE corpo FIM
                 | ID ABRE_PARENTESE lista_parametros error corpo FIM
-                | ID ABRE_PARENTESE lista_parametros FECHA_PARENTESE corpo 
+                | ID ABRE_PARENTESE lista_parametros FECHA_PARENTESE error FIM
+                | ID ABRE_PARENTESE lista_parametros FECHA_PARENTESE corpo error
+                | ID ABRE_PARENTESE lista_parametros FECHA_PARENTESE corpo
     """
     global arrError
     global showKey
@@ -994,8 +997,8 @@ def generate_syntax_tree(args):
 
         if len(arrError) > 0:
             raise IOError(arrError)
-
-        return root
+        else:
+            return root
 
     except Exception as e:
         for i in range(len(e.args[0])):
@@ -1060,8 +1063,8 @@ if __name__ == "__main__":
     except Exception as e:
         for i in range(len(e.args[0])):
             print(e.args[0][i])
-    except (ValueError, TypeError):
-        print(e)
+    #except (ValueError, TypeError):
+    #    print(e)
 
 
     

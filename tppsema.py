@@ -119,6 +119,35 @@ def find_parameters(node,semtable,scope,data):
     # Busca recursivamente nos filhos do nó atual
     for child in node.children:
         find_parameters(child,semtable,scope,data)
+
+#Manda a lista de variavel e coloca na tabela semântica
+def declaracaVariavelAux(node,semtable,scope,type):
+    nodeAux = node
+    name = None
+    data = None
+    if len(node.children) > 2:
+        nodeAux = nodeAux.children[2]
+        if len(node.children) > 1:
+            data = find_ID_and_factor(nodeAux)            
+        nodeAux = nodeAux.children[0]
+        nodeAux = nodeAux.children[0]
+        name = nodeAux.name
+
+        
+    else:
+    
+        nodeAux = nodeAux.children[0]
+        nodeAux = nodeAux.children[0]
+        nodeAux = nodeAux.children[0]
+        name = nodeAux.name
+
+    semtable.append({"declaration": PalavrasChaves.declaracao_variaveis.value,
+                    "type": type,
+                    "id": name,
+                    "scope": scope,
+                    "data": data
+                    })
+
     
 def creatingSemanticTable(tree):
     global haveTPP
@@ -142,14 +171,15 @@ def creatingSemanticTable(tree):
             nodeAux = node.children[0] 
             nodeAux = nodeAux.children[0] 
             type = nodeAux.name
-
+            
             nodeAux = node.children[2] 
-            nodeAux = nodeAux.children[0]
-            nodeAux = nodeAux.children[0]
-            nodeAux = nodeAux.children[0]
-            name = nodeAux.name
-
-            semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope})
+            while nodeAux.name == "lista_variaveis":
+                declaracaVariavelAux(nodeAux,semTable,scope,type)
+                nodeAux = nodeAux.children[0]
+                
+            
+            #name = nodeAux.name
+            #semTable.append({"declaration": node.name, "type": type, "id": name, "scope": scope})
 
         if hasattr(node, 'name') and node.name == PalavrasChaves.fim.value:
             scope = None
@@ -223,9 +253,18 @@ def creatingSemanticTable(tree):
             nodeAux = nodeAux.children[0]
             #data = find_ID_and_factor(nodeAux)
             name = nodeAux.name
-            semTable.append({"declaration": node.name, "id": name, "scope": scope}) 
+
+            nodeAux = node.parent
+            while nodeAux.name == 'lista_variaveis':
+                nodeAux = nodeAux.parent
+
+            #VERIFICA SE ELE FOI USADO FORA DE ATRIBUIÇÕES E DECLARAÇÕES
+            if nodeAux.name != PalavrasChaves.declaracao_variaveis.value and (node.parent).name != PalavrasChaves.atribuicao.value:
+                semTable.append({"declaration": node.name, "id": name, "scope": scope}) 
+                
+
     
-    # pprint.pprint(semTable)
+    #pprint.pprint(semTable)
     # if len(arrError) > 0:
     #     raise IOError(arrError)
     
@@ -374,12 +413,14 @@ def verificarDeclaracaoEInicializacao(semTable):
     variaveisDeclaradas = {}
     variaveisInicializadas = {}
     variaveisUtilizadas = {}
+    variaveisUtilizadasAUX = {}
 
     # Itera sobre a tabela semântica para preencher as variáveis declaradas e inicializadas
     for declaracao in semTable:
         
         scope = declaracao.get('scope', None)
         var_id = declaracao.get('id', None)
+
         
         # Preenche o dicionário de variáveis declaradas por escopo
         if declaracao['declaration'] == 'declaracao_variaveis':
@@ -395,44 +436,23 @@ def verificarDeclaracaoEInicializacao(semTable):
         
         # Preenche o dicionário de variáveis utilizadas por escopo
         elif declaracao['declaration'] == 'var':
-            if scope not in variaveisUtilizadas:
+            if scope not in variaveisUtilizadasAUX:
                 variaveisUtilizadas[scope] = set()
-            variaveisUtilizadas[scope].add(var_id)
 
-    # Verifica variáveis utilizadas que não foram declaradas
-    for scope, vars_utilizadas in variaveisUtilizadas.items():
-        vars_declaradas = variaveisDeclaradas.get(scope, set())
-        for var in vars_utilizadas:
-            if var not in vars_declaradas:
-                arrError.append(error_handler.newError(showKey,'ERR-SEM-VAR-NOT-DECL'))
+            variaveisUtilizadas[scope].add(var_id)
+        
+
+    print(variaveisDeclaradas)
+    print(variaveisInicializadas)
+    print(variaveisUtilizadas)
+    print("-------------------")
+
+    #UTILIZADO E NAO DECLARADO
+    #DECLARADO E NAO INICIALIZADO[
+    #DECLARADO E NAO UTILIZADO
+    #DECLARADO MAIS DE UMA VEZ
+
     
-    # Verifica variáveis declaradas mas não inicializadas
-    for scope, vars_declaradas in variaveisDeclaradas.items():
-        vars_inicializadas = variaveisInicializadas.get(scope, set())
-        for var in vars_declaradas:
-            if var not in vars_inicializadas:
-                if var in variaveisUtilizadas.get(scope, set()):
-                    arrError.append(error_handler.newError(showKey,'WAR-SEM-VAR-DECL-NOT-INIT'))
-                    #TODO: VARIAVEIS DE PARAMETROS NAO DEVEM ENTRAR AQUI
-    
-    # Verifica variáveis declaradas mas não utilizadas
-    for scope, vars_declaradas in variaveisDeclaradas.items():
-        vars_utilizadas = variaveisUtilizadas.get(scope, set())
-        for var in vars_declaradas:
-            if var not in vars_utilizadas:
-                arrError.append(error_handler.newError(showKey,'WAR-SEM-VAR-DECL-NOT-USED'))
-    
-    # Verifica variáveis declaradas mais de uma vez
-    for scope, vars_declaradas in variaveisDeclaradas.items():
-        if len(vars_declaradas) != len(set(vars_declaradas)):
-            vars_count = {}
-            for var in vars_declaradas:
-                if var not in vars_count:
-                    vars_count[var] = 0
-                vars_count[var] += 1
-            for var, count in vars_count.items():
-                if count > 1:
-                    arrError.append(error_handler.newError(showKey,'WAR-SEM-VAR-DECL-PREV'))
 
     #print(variaveisUtilizadas)
     #print(variaveisDeclaradas)
@@ -490,7 +510,7 @@ def semanticMain(args):
             # print(RenderTree(tree, style=AsciiStyle()).by_attr())
             # for pre, fill, node in RenderTree(root):
             #     print("%s%s" % (pre, node.name))
-
+            
             semanticTable = creatingSemanticTable(tree)
             checkingTable(semanticTable)
 
