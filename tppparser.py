@@ -109,7 +109,7 @@ def p_declaracao(p):
 
 def p_declaracao_variaveis(p):
     """declaracao_variaveis : tipo DOIS_PONTOS lista_variaveis"""
-
+    
     pai = MyNode(name='declaracao_variaveis', type='DECLARACAO_VARIAVEIS')
     p[0] = pai
 
@@ -125,7 +125,6 @@ def p_declaracao_variaveis(p):
 #   (inicializacao_variaveis)
 #              |
 #         (atribuicao)
-
 
 def p_inicializacao_variaveis(p):
     """inicializacao_variaveis : atribuicao"""
@@ -201,6 +200,9 @@ def p_indice_error(p):
                 | error expressao FECHA_COLCHETE
                 | indice ABRE_COLCHETE expressao error
                 | indice error expressao FECHA_COLCHETE
+                | indice ABRE_COLCHETE error 
+
+                
     """
 
     global arrError
@@ -209,10 +211,12 @@ def p_indice_error(p):
     token = p
     column = find_column(token.lexer.lexdata, token)
 
-    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-INDICE', linha=token.lineno(2), coluna=column))
 
-    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    pai = MyNode(name='ERR-SYN-INDICE', type='ERROR')
     p[0] = pai
+
+    
     # if len(p) == 4:
     #     p[1] = new_node('ABRECOLCHETES', father)
     #     p[2].parent = father
@@ -298,9 +302,9 @@ def p_cabecalho_error(p):
     token = p
     column = find_column(token.lexer.lexdata, token)
 
-    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-CABECALHO', linha=token.lineno(2), coluna=column))
 
-    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    pai = MyNode(name='ERR-SYN-CABECALHO', type='ERROR')
     p[0] = pai
 
 def p_lista_parametros(p):
@@ -359,9 +363,9 @@ def p_parametro_error(p):
     token = p
     column = find_column(token.lexer.lexdata, token)
 
-    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-PARAMETRO', linha=token.lineno(2), coluna=column))
 
-    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    pai = MyNode(name='ERR-SYN-PARAMETRO', type='ERROR')
     p[0] = pai
 
 
@@ -451,20 +455,22 @@ def p_se_error(p):
     token = p
     column = find_column(token.lexer.lexdata, token)
 
+    #print(p[3] == 'então')
+
     if p[1] != 'se':
         arrError.append(error_handler.newError(showKey,'ERR-SYN-SE', linha=token.lineno(2), coluna=column))
         pai = MyNode(name='ERR-SYN-SE', type='ERROR')
         p[0] = pai
+    if p[3] != 'então':
+        arrError.append(error_handler.newError(showKey,'ERR-SYN-SE-ENTAO', linha=token.lineno(2), coluna=column))
+        pai = MyNode(name='ERR-SYN-SE-ENTAO', type='ERROR')
+        p[0] = pai
     if len(p) == 8:
-        if p[3] != 'então':
-            arrError.append(error_handler.newError(showKey,'ERR-SYN-SE-ENTAO', linha=token.lineno(2), coluna=column))
-            pai = MyNode(name='ERR-SYN-SE-ENTAO', type='ERROR')
-            p[0] = pai
         if p[7] != 'fim':
             arrError.append(error_handler.newError(showKey,'ERR-SYN-SE-FIM', linha=token.lineno(2), coluna=column))
             pai = MyNode(name='ERR-SYN-SE-FIM', type='ERROR')
             p[0] = pai
-        
+    
 
 def p_repita(p):
     """repita : REPITA corpo ATE expressao"""
@@ -499,9 +505,9 @@ def p_repita_error(p):
     token = p
     column = find_column(token.lexer.lexdata, token)
 
-    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-REPITA', linha=token.lineno(2), coluna=column))
 
-    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    pai = MyNode(name='ERR-SYN-REPITA', type='ERROR')
     p[0] = pai
 
 def p_atribuicao(p):
@@ -555,9 +561,9 @@ def p_leia_error(p):
     token = p
     column = find_column(token.lexer.lexdata, token)
 
-    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-LEIA', linha=token.lineno(2), coluna=column))
 
-    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    pai = MyNode(name='ERR-SYN-LEIA', type='ERROR')
     p[0] = pai
 
 def p_escreva(p):
@@ -579,6 +585,21 @@ def p_escreva(p):
     filho4 = MyNode(name='FECHA_PARENTESE', type='FECHA_PARENTESE', parent=pai)
     filho_sym4 = MyNode(name=')', type='SIMBOLO', parent=filho4)
     p[4] = filho4
+
+# def p_escreva_error(p):
+#     """escreva : ESCREVA ABRE_PARENTESE expressao FECHA_PARENTESE """
+
+#     global arrError
+#     global showKey
+
+#     token = p
+#     column = find_column(token.lexer.lexdata, token)
+
+#     arrError.append(error_handler.newError(showKey,'ERR-SYN-ESCREVA', linha=token.lineno(2), coluna=column))
+
+#     pai = MyNode(name='ERR-SYN-ESCREVA', type='ERROR')
+#     p[0] = pai
+
 
 
 def p_retorna(p):
@@ -815,9 +836,9 @@ def p_fator_error(p):
     token = p
     column = find_column(token.lexer.lexdata, token)
 
-    arrError.append(error_handler.newError(showKey,'ERR-SYN-LISTA-ARGUMENTOS', linha=token.lineno(2), coluna=column))
+    arrError.append(error_handler.newError(showKey,'ERR-SYN-FATOR', linha=token.lineno(2), coluna=column))
 
-    pai = MyNode(name='ERR-SYN-LISTA-ARGUMENTOS', type='ERROR')
+    pai = MyNode(name='ERR-SYN-FATOR', type='ERROR')
     p[0] = pai
     
 def p_numero(p):
@@ -922,6 +943,7 @@ def p_error(p):
         print("Erro:[{line},{column}]: Erro próximo ao token '{token}'".format(
             line=token.lineno, column=column, token=token.value))
 
+
 # Programa principal.
 
 # Build the parser.
@@ -973,7 +995,6 @@ def generate_syntax_tree(args):
         if len(arrError) > 0:
             raise IOError(arrError)
 
-        
         return root
 
     except Exception as e:

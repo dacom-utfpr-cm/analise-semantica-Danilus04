@@ -12,4 +12,4 @@ inteiro principal()
 	principal()
 	
 	retorna(a + b + c + d)
-fim
+

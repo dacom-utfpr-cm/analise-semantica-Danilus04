@@ -15,14 +15,8 @@ class MyError():
     message = ''
     message = f"Erro[{linha}][{coluna}]: "
     if(showKey):
-      if(linha == None or coluna == None):
-        return(key)
-      else: 
-        return(message + key)
+      return(key)
     else:  
-      if(linha == None or coluna == None):
-        message = ''
-        
       if(key):
         message += self.config.get(self.errorType, key)
       

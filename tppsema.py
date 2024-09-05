@@ -482,15 +482,17 @@ def semanticMain(args):
             raise IOError(arrError)
         
         # Se chegou aqui, tudo está OK
-        tree = generate_syntax_tree(args)         
-        # Exemplo de renderização da árvore (descomente se necessário)
-        # print(tree)
-        # print(RenderTree(tree, style=AsciiStyle()).by_attr())
-        # for pre, fill, node in RenderTree(root):
-        #     print("%s%s" % (pre, node.name))
+        tree = generate_syntax_tree(args)        
+        if tree:
+        
+            # Exemplo de renderização da árvore (descomente se necessário)
+            # print(tree)
+            # print(RenderTree(tree, style=AsciiStyle()).by_attr())
+            # for pre, fill, node in RenderTree(root):
+            #     print("%s%s" % (pre, node.name))
 
-        semanticTable = creatingSemanticTable(tree)
-        checkingTable(semanticTable)
+            semanticTable = creatingSemanticTable(tree)
+            checkingTable(semanticTable)
 
         # Verifica se há erros após a análise semântica
         if len(arrError) > 0:
