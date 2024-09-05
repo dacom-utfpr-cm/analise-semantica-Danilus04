@@ -133,15 +133,17 @@ def declaracaVariavelAux(node,semtable,scope,type):
         nodeAux = nodeAux.children[0]
         nodeAux = nodeAux.children[0]
         name = nodeAux.name
-
         
     else:
     
         nodeAux = nodeAux.children[0]
+        if len(nodeAux.children) > 1:
+            data = find_ID_and_factor(nodeAux)  
         nodeAux = nodeAux.children[0]
         nodeAux = nodeAux.children[0]
         name = nodeAux.name
 
+    #print(name, data)
     semtable.append({"declaration": PalavrasChaves.declaracao_variaveis.value,
                     "type": type,
                     "id": name,
@@ -393,7 +395,7 @@ def verificarTipoDaVariavel(semTable, name, scope):
     for declaracao in semTable:
         
         if declaracao['declaration'] == PalavrasChaves.declaracao_variaveis.value or declaracao['declaration'] == PalavrasChaves.declaracao_funcao.value:
-            if declaracao['scope'] == scope and declaracao['id'] == name:
+            if (declaracao['scope'] == scope or declaracao['scope'] == None) and declaracao['id'] == name:
                 return declaracao['type']
 
 def verificarPricipalChamada(semTable):
@@ -447,7 +449,7 @@ def verificarDeclaracaoEInicializacao(semTable):
             if scope not in variaveisInicializadas:
                 variaveisInicializadas[scope] = set()
             variaveisInicializadas[scope].add(var_id)
-        #TODO: SE FOR DE PARAMETRO JA VEM INICIALIZADAS
+        
         
         # Preenche o dicionário de variáveis utilizadas por escopo
         elif declaracao['declaration'] == 'var':
@@ -522,7 +524,7 @@ def verificarDeclaracaoEInicializacao(semTable):
                     #if(var not in vars_declaradasEInit):
                     arrError.append(error_handler.newError(showKey,'WAR-SEM-VAR-DECL-NOT-USED'))
             else:
-                print(scope, var, vars_declaradasEInit)
+                #print(scope, var, vars_declaradasEInit)
                 if(var not in vars_declaradasEInit):
                     if( var not in variaveisDeclaradasENaoInicializada):
                         variaveisDeclaradasENaoInicializada.add(var)
@@ -532,7 +534,26 @@ def verificarDeclaracaoEInicializacao(semTable):
     #print(variaveisDeclaradasENaoInicializada)
     #print(variaveisDeclaradasENaoUtilizada)
 
-#def 
+def verificacaoDeArranjos(semTable):
+    global arrError
+    global showKey
+
+    for declaration in semTable:
+        inteiro = True
+        if declaration["declaration"] == PalavrasChaves.declaracao_variaveis.value:
+            if declaration["data"] != "Param" and declaration["data"] != None:
+                data = declaration['data']
+                for var in data:
+
+                    tipoVar = verificarTipoDaVariavel(semTable, var, declaration['scope'])
+                    
+                    if tipoVar != "INTEIRO":
+                        
+                        inteiro = False
+        if not inteiro:
+            arrError.append(error_handler.newError(showKey,'ERR-SEM-ARRAY-INDEX-NOT-INT'))
+
+                
     
 
 def checkingTable(semTable):
@@ -551,7 +572,7 @@ def checkingTable(semTable):
     #2
     verificarDeclaracaoEInicializacao(semTable)
     #4 arranjos Vetor
-
+    verificacaoDeArranjos(semTable)
     #verificarVariavelDeclarada(semTable)
 
 def semanticMain(args):

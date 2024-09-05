@@ -10,7 +10,7 @@ b:= 1 + d
 
 
 inteiro principal()
-  inteiro: c[1.2]
-  c[5.8] := 10 + b
+  inteiro: c[b][2]
+  c[5][2] := 10 + b
     
 fim
