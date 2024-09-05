@@ -126,6 +126,10 @@ def p_declaracao_variaveis(p):
 #              |
 #         (atribuicao)
 
+#TODO: FAZER P_ERROR DESSA FUNÇÃO
+#   """declaracao_variaveis : tipo DOIS_PONTOS error"""
+ 
+
 def p_inicializacao_variaveis(p):
     """inicializacao_variaveis : atribuicao"""
 
@@ -946,12 +950,12 @@ def p_error(p):
         print("Erro:[{line},{column}]: Erro próximo ao token '{token}'".format(
             line=token.lineno, column=column, token=token.value))
 
-
 # Programa principal.
 
 # Build the parser.
-parser = yacc.yacc(method="LALR", optimize=True, start='programa', debug=True,
+parser = yacc.yacc(method="LALR", optimize=True, start='programa', debug=False,
                    debuglog=log, write_tables=False, tabmodule='tpp_parser_tab')
+
 
 def generate_syntax_tree(args):
     error_handler = MyError('ParserErrors')
